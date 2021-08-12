@@ -81,6 +81,11 @@ loss_func_mse = nn.MSELoss(reduction='none')
 
 # Loading the trained model
 model = torch.load(args.model_dir)
+
+# filename, file_extension = os.path.splitext(args.model_dir)
+# model_name = filename + "_new" + file_extension
+# torch.save(model, model_name)
+
 model.cuda()
 m_items = torch.load(args.m_items_dir)
 labels = np.load('./data/frame_labels_'+args.dataset_type+'.npy')
