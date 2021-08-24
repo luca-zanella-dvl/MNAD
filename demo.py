@@ -4,6 +4,7 @@ import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.modules.activation import Softmax2d
 import torch.optim as optim
 import torchvision
 import torch.nn.init as init
@@ -28,6 +29,8 @@ import random
 import glob
 
 import argparse
+
+from tqdm import tqdm
 
 
 parser = argparse.ArgumentParser(description="MNAD")
@@ -216,6 +219,10 @@ anomaly_score_total_list += score_sum(
 )
 # print(anomaly_score_total_list)
 
+pbar = tqdm(
+    total=len(test_batch),
+    bar_format="{l_bar}|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}{postfix}|{elapsed}<{remaining}]",
+)
 for i, (imgs, frame_name) in enumerate(test_batch):
     imgs = Variable(imgs).cuda()
     frame_name = frame_name[0]
@@ -224,3 +231,7 @@ for i, (imgs, frame_name) in enumerate(test_batch):
         visualize_frame_with_text(frame_name, anomaly_score_total_list[i - (args.t_length - 1)], output_dir)
     else:
         visualize_frame_with_text(frame_name, -1, output_dir)
+
+    pbar.update(1)
+
+pbar.close()
