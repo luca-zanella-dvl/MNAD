@@ -201,7 +201,7 @@ model.cuda()
 log_dir = os.path.join("./exp", args.dataset_type, args.method, args.exp_dir)
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
-# writer = SummaryWriter(log_dir)
+writer = SummaryWriter(log_dir)
 # orig_stdout = sys.stdout
 # f = open(os.path.join(log_dir, 'log.txt'),'w')
 # sys.stdout= f
@@ -267,28 +267,28 @@ for epoch in range(args.epochs):
     scheduler.step()
     pbar.close()
 
-#     # print('----------------------------------------')
-#     # print('Epoch:', epoch+1)
-#     if args.method == "pred":
-#         writer.add_scalar("Loss/Prediction", loss_pixel.item(), epoch + 1)
-#         writer.add_scalar("Loss/Compactness", compactness_loss.item(), epoch + 1)
-#         writer.add_scalar("Loss/Separateness", separateness_loss.item(), epoch + 1)
-#         # print('Loss: Prediction {:.6f}/ Compactness {:.6f}/ Separateness {:.6f}'.format(loss_pixel.item(), compactness_loss.item(), separateness_loss.item()))
-#     else:
-#         writer.add_scalar("Loss/Reconstruction", loss_pixel.item(), epoch + 1)
-#         writer.add_scalar("Loss/Compactness", compactness_loss.item(), epoch + 1)
-#         writer.add_scalar("Loss/Separateness", separateness_loss.item(), epoch + 1)
-#         # print('Loss: Reconstruction {:.6f}/ Compactness {:.6f}/ Separateness {:.6f}'.format(loss_pixel.item(), compactness_loss.item(), separateness_loss.item()))
-#     # print('Memory_items:')
-#     # print(m_items)
-#     # print('----------------------------------------')
+    # print('----------------------------------------')
+    # print('Epoch:', epoch+1)
+    if args.method == "pred":
+        writer.add_scalar("Loss/Prediction", loss_pixel.item(), epoch + 1)
+        writer.add_scalar("Loss/Compactness", compactness_loss.item(), epoch + 1)
+        writer.add_scalar("Loss/Separateness", separateness_loss.item(), epoch + 1)
+        # print('Loss: Prediction {:.6f}/ Compactness {:.6f}/ Separateness {:.6f}'.format(loss_pixel.item(), compactness_loss.item(), separateness_loss.item()))
+    else:
+        writer.add_scalar("Loss/Reconstruction", loss_pixel.item(), epoch + 1)
+        writer.add_scalar("Loss/Compactness", compactness_loss.item(), epoch + 1)
+        writer.add_scalar("Loss/Separateness", separateness_loss.item(), epoch + 1)
+        # print('Loss: Reconstruction {:.6f}/ Compactness {:.6f}/ Separateness {:.6f}'.format(loss_pixel.item(), compactness_loss.item(), separateness_loss.item()))
+    # print('Memory_items:')
+    # print(m_items)
+    # print('----------------------------------------')
 
-# print("Training is finished")
-# # Save the model and the memory items
-# torch.save(model, os.path.join(log_dir, "model.pth"))
-# torch.save(m_items, os.path.join(log_dir, "keys.pt"))
+print("Training is finished")
+# Save the model and the memory items
+torch.save(model, os.path.join(log_dir, "model.pth"))
+torch.save(m_items, os.path.join(log_dir, "keys.pt"))
 
-# # sys.stdout = orig_stdout
-# # f.close()
-# writer.flush()
-# writer.close()
+# sys.stdout = orig_stdout
+# f.close()
+writer.flush()
+writer.close()
