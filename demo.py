@@ -31,6 +31,7 @@ import glob
 import argparse
 
 from tqdm import tqdm
+from collections import deque
 
 
 parser = argparse.ArgumentParser(description="MNAD")
@@ -145,10 +146,14 @@ m_items = torch.load(args.m_items_dir)
 
 print("Evaluation of", args.dataset_type)
 
-output_dir = os.path.join("exp", args.dataset_type, args.method, "demo")
+output_dir = os.path.join("exp", args.dataset_type, args.method, "err")
 
 psnr_list = []
 feature_distance_list = []
+err_buffer = deque(maxlen=args.t_length)
+dim = (args.h, args.w)
+for i in range(args.t_length - 1):
+    err_buffer.append(np.zeros(dim, dtype=np.uint8))
 
 m_items_test = m_items.clone()
 
@@ -175,6 +180,20 @@ for i, (imgs, frame_name) in enumerate(test_batch):
             loss_func_mse((outputs[0] + 1) / 2, (imgs[0, 3 * 4 :] + 1) / 2)
         ).item()
         mse_feas = compactness_loss.item()
+
+        pred_err = torch.mean(
+            loss_func_mse((outputs[0] + 1) / 2, (imgs[0, 3 * 4 :] + 1) / 2), dim=0
+        )
+
+        err_buffer.append((pred_err * 255).cpu().detach().numpy().astype("uint8"))
+
+        visualize_pred_err(
+            frame_name,
+            err_buffer.popleft(),
+            args.h,
+            args.w,
+            output_dir
+        )
 
         # Calculating the threshold for updating at the test time
         point_sc = point_score(outputs, imgs[:, 3 * 4 :])
@@ -219,19 +238,21 @@ anomaly_score_total_list += score_sum(
 )
 # print(anomaly_score_total_list)
 
-pbar = tqdm(
-    total=len(test_batch),
-    bar_format="{l_bar}|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}{postfix}|{elapsed}<{remaining}]",
-)
-for i, (imgs, frame_name) in enumerate(test_batch):
-    imgs = Variable(imgs).cuda()
-    frame_name = frame_name[0]
+# output_dir = os.path.join("exp", args.dataset_type, args.method, "demo")
 
-    if i - (args.t_length - 1) >= 0:
-        visualize_frame_with_text(frame_name, anomaly_score_total_list[i - (args.t_length - 1)], output_dir)
-    else:
-        visualize_frame_with_text(frame_name, -1, output_dir)
+# pbar = tqdm(
+#     total=len(test_batch),
+#     bar_format="{l_bar}|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}{postfix}|{elapsed}<{remaining}]",
+# )
+# for i, (imgs, frame_name) in enumerate(test_batch):
+#     imgs = Variable(imgs).cuda()
+#     frame_name = frame_name[0]
 
-    pbar.update(1)
+#     if i - (args.t_length - 1) >= 0:
+#         visualize_frame_with_text(frame_name, anomaly_score_total_list[i - (args.t_length - 1)], output_dir)
+#     else:
+#         visualize_frame_with_text(frame_name, -1, output_dir)
 
-pbar.close()
+#     pbar.update(1)
+
+# pbar.close()
