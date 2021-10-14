@@ -55,13 +55,18 @@ class DataLoader(data.Dataset):
             self.videos[video_name]["frame"] = glob.glob(os.path.join(video, "*.jpg"))
             self.videos[video_name]["frame"].sort()
             self.videos[video_name]["length"] = len(self.videos[video_name]["frame"])
+            self.videos[video_name]["min_frame"] = int(self.videos[video_name]["frame"][0].split("/")[-1].split(".")[-2])
+
 
     def get_all_samples(self):
         frames = []
         videos = glob.glob(os.path.join(self.dir, "*"))
+        print(os.path.join(self.dir, "*"))
         for video in sorted(videos):
             video_name = video.split("/")[-1]
-            for i in range(len(self.videos[video_name]["frame"]) - self._time_step):
+            #for i in range(len(self.videos[video_name]["frame"]) - self._time_step):
+            for i in range(len(self.videos[video_name]["frame"]) - self._time_step-self._num_pred):
+            
                 frames.append(self.videos[video_name]["frame"][i])
 
         return frames
@@ -80,7 +85,7 @@ class DataLoader(data.Dataset):
             if self.transform is not None:
                 batch.append(self.transform(image))
 
-        return np.concatenate(batch, axis=0)
+        return np.concatenate(batch, axis=0), self.samples[index]
 
     def __len__(self):
         return len(self.samples)
