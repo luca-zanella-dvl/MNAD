@@ -238,21 +238,21 @@ anomaly_score_total_list += score_sum(
 )
 # print(anomaly_score_total_list)
 
-# output_dir = os.path.join("exp", args.dataset_type, args.method, "demo")
+output_dir = os.path.join("exp", args.dataset_type, args.method, "demo")
 
-# pbar = tqdm(
-#     total=len(test_batch),
-#     bar_format="{l_bar}|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}{postfix}|{elapsed}<{remaining}]",
-# )
-# for i, (imgs, frame_name) in enumerate(test_batch):
-#     imgs = Variable(imgs).cuda()
-#     frame_name = frame_name[0]
+pbar = tqdm(
+    total=len(test_batch),
+    bar_format="{l_bar}|{bar}| {n_fmt}/{total_fmt} [{rate_fmt}{postfix}|{elapsed}<{remaining}]",
+)
+for i, (imgs, frame_name) in enumerate(test_batch):
+    imgs = Variable(imgs).cuda()
+    frame_name = frame_name[0]
 
-#     if i - (args.t_length - 1) >= 0:
-#         visualize_frame_with_text(frame_name, anomaly_score_total_list[i - (args.t_length - 1)], output_dir)
-#     else:
-#         visualize_frame_with_text(frame_name, -1, output_dir)
+    if i - (args.t_length - 1) >= 0:
+        visualize_frame_with_text(frame_name, anomaly_score_total_list[i - (args.t_length - 1)], output_dir)
+    else:
+        visualize_frame_with_text(frame_name, -1, output_dir)
 
-#     pbar.update(1)
+    pbar.update(1)
 
-# pbar.close()
+pbar.close()
