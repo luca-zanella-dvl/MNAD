@@ -134,16 +134,17 @@ class Memory(nn.Module):
         
         return score_query, score_memory
     
-    def forward(self, query, keys, train=True):
+    def forward(self, query, keys, mode):
 
         batch_size, dims,h,w = query.size() # b X d X h X w
         query = F.normalize(query, dim=1)
         query = query.permute(0,2,3,1) # b X h X w X d
         
         #train
-        if train:
+        if mode=="train":
             #gathering loss
             gathering_loss = self.gather_loss(query,keys, train)
+            
             #spreading_loss
             spreading_loss = self.spread_loss(query, keys, train)
             # read
@@ -154,7 +155,7 @@ class Memory(nn.Module):
             return updated_query, updated_memory, softmax_score_query, softmax_score_memory, gathering_loss, spreading_loss
         
         #test
-        else:
+        elif mode=="test":
             #gathering loss
             gathering_loss = self.gather_loss(query,keys, train)
             
@@ -167,6 +168,19 @@ class Memory(nn.Module):
                
             return updated_query, updated_memory, softmax_score_query, softmax_score_memory, gathering_loss
         
+        #validation
+        else: 
+            #gathering loss
+            gathering_loss = self.gather_loss(query,keys, train)
+            
+            #spreading_loss
+            spreading_loss = self.spread_loss(query, keys, train)
+
+            # read 
+            updated_query, softmax_score_query,softmax_score_memory = self.read(query, keys)
+            
+            return  updated_query, gathering_loss, spreading_loss
+
         
     
     def update(self, query, keys,train):

@@ -136,22 +136,28 @@ class convAE(torch.nn.Module):
         self.memory = Memory(memory_size,feature_dim, key_dim, temp_update, temp_gather)
        
 
-    def forward(self, x, keys,train=True):
+    def forward(self, x, keys, mode):
 
         fea, skip1, skip2, skip3 = self.encoder(x)
-        if train:
-            updated_fea, keys, softmax_score_query, softmax_score_memory, separateness_loss, compactness_loss = self.memory(fea, keys, train)
+        if mode=="train":
+            updated_fea, keys, softmax_score_query, softmax_score_memory, separateness_loss, compactness_loss = self.memory(fea, keys, "train")
             output = self.decoder(updated_fea, skip1, skip2, skip3)
             
             return output, fea, updated_fea, keys, softmax_score_query, softmax_score_memory, separateness_loss, compactness_loss
         
-        #test
-        else:
-            updated_fea, keys, softmax_score_query, softmax_score_memory,query, top1_keys, keys_ind, compactness_loss = self.memory(fea, keys, train)
+        
+        elif mode=="test":
+            updated_fea, keys, softmax_score_query, softmax_score_memory,query, top1_keys, keys_ind, compactness_loss = self.memory(fea, keys, "test")
             output = self.decoder(updated_fea, skip1, skip2, skip3)
             
             return output, fea, updated_fea, keys, softmax_score_query, softmax_score_memory, query, top1_keys, keys_ind, compactness_loss
         
+        else:
+            updated_fea, separateness_loss, compactness_loss = self.memory(fea, keys, "val")
+            output = self.decoder(updated_fea, skip1, skip2, skip3)
+            
+            return output,  updated_fea, separateness_loss, compactness_loss
+
                                           
 
 

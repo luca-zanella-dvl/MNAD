@@ -96,12 +96,8 @@ if args.gpus is None:
     gpus = "0"
     os.environ["CUDA_VISIBLE_DEVICES"] = gpus
 else:
-    # gpus = ""
-    # for i in range(len(args.gpus)):
-    #     gpus = gpus + args.gpus[i] + ","
-    # os.environ["CUDA_VISIBLE_DEVICES"]= gpus[:-1]
-    gpus = ",".join(args.gpus)
-    os.environ["CUDA_VISIBLE_DEVICES"] = gpus
+    
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus[0]
 
 torch.backends.cudnn.enabled = (
     True  # make sure to use cudnn for computational performance
@@ -111,54 +107,28 @@ train_folder = os.path.join(args.dataset_path, args.dataset_type, "training/fram
 val_folder = os.path.join(args.dataset_path, args.dataset_type, "validation/frames")
 
 # Loading dataset
-if args.dataset_type == "bg" or args.dataset_type.startswith("mt"):
-    train_dataset = CustomDataset(
-        train_folder,
-        transforms.Compose(
-            [
-                transforms.ToTensor(),
-            ]
-        ),
-        resize_height=args.h,
-        resize_width=args.w,
-        time_step=args.t_length - 1,
-    )
-
-    val_dataset = CustomDataset(
-        val_folder,
-        transforms.Compose(
-            [
-                transforms.ToTensor(),
-            ]
-        ),
-        resize_height=args.h,
-        resize_width=args.w,
-        time_step=args.t_length - 1,
-    )
-else:
-    train_dataset = DataLoader(
-        train_folder,
-        transforms.Compose(
-            [
-                transforms.ToTensor(),
-            ]
-        ),
-        resize_height=args.h,
-        resize_width=args.w,
-        time_step=args.t_length - 1,
-    )
-
-    val_dataset = DataLoader(
-        val_folder,
-        transforms.Compose(
-            [
-                transforms.ToTensor(),
-            ]
-        ),
-        resize_height=args.h,
-        resize_width=args.w,
-        time_step=args.t_length - 1,
-    )
+train_dataset = DataLoader(
+    train_folder,
+    transforms.Compose(
+        [
+            transforms.ToTensor(),
+        ]
+    ),
+    resize_height=args.h,
+    resize_width=args.w,
+    time_step=args.t_length - 1,
+)
+val_dataset = DataLoader(
+    val_folder,
+    transforms.Compose(
+        [
+            transforms.ToTensor(),
+        ]
+    ),
+    resize_height=args.h,
+    resize_width=args.w,
+    time_step=args.t_length - 1,
+)
 
 train_size = len(train_dataset)
 val_size = len(val_dataset)
@@ -190,11 +160,14 @@ else:
     model = convAE(
         args.c, memory_size=args.msize, feature_dim=args.fdim, key_dim=args.mdim
     )
+
 params_encoder = list(model.encoder.parameters())
 params_decoder = list(model.decoder.parameters())
 params = params_encoder + params_decoder
+
 optimizer = torch.optim.Adam(params, lr=args.lr)
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+
 model.cuda()
 
 
@@ -203,9 +176,7 @@ log_dir = os.path.join("./exp", args.dataset_type, args.method, args.exp_dir)
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
 writer = SummaryWriter(log_dir)
-# orig_stdout = sys.stdout
-# f = open(os.path.join(log_dir, 'log.txt'),'w')
-# sys.stdout= f
+
 
 loss_func_mse = nn.MSELoss(reduction="none")
 
@@ -243,8 +214,8 @@ for epoch in range(args.epochs):
                 softmax_score_memory,
                 separateness_loss,
                 compactness_loss,
-            ) = model.forward(imgs[:, 0:12], m_items, True)
-
+            ) = model.forward(imgs[:, 0:12], m_items, mode="train")
+            
         else:
             (
                 outputs,
@@ -255,22 +226,24 @@ for epoch in range(args.epochs):
                 softmax_score_memory,
                 separateness_loss,
                 compactness_loss,
-            ) = model.forward(imgs, m_items, True)
+            ) = model.forward(imgs, m_items, mode="train")
 
         optimizer.zero_grad()
         if args.method == "pred":
             loss_pixel = torch.mean(loss_func_mse(outputs, imgs[:, 12:]))
+            
         else:
             loss_pixel = torch.mean(loss_func_mse(outputs, imgs))
 
+        
         loss = (
             loss_pixel
             + args.loss_compact * compactness_loss
             + args.loss_separate * separateness_loss
         )
-        loss.backward(retain_graph=True)
+
+        loss.backward(retain_graph=False)
         optimizer.step()
-        
         
 
         loss_pix.update(loss_pixel.item(),  1)
@@ -318,25 +291,17 @@ for epoch in range(args.epochs):
             (
                 outputs,
                 _,
-                _,
-                m_items,
-                softmax_score_query,
-                softmax_score_memory,
                 separateness_loss_v,
                 compactness_loss_v,
-            ) = model.forward(imgs[:, 0:12], m_items, True)
+            ) = model.forward(imgs[:, 0:12], m_items, "val")
 
         else:
             (
                 outputs,
                 _,
-                _,
-                m_items,
-                softmax_score_query,
-                softmax_score_memory,
                 separateness_loss_v,
                 compactness_loss_v,
-            ) = model.forward(imgs, m_items, True)
+            ) = model.forward(imgs, m_items, "val")
 
         
         if args.method == "pred":
@@ -381,11 +346,15 @@ for epoch in range(args.epochs):
       else:
         model_save = model
         
-      torch.save(model, os.path.join(log_dir, 'model_'+str(epoch)+'.pth'))
+      torch.save(model_save, os.path.join(log_dir, 'model_'+str(epoch)+'.pth'))
 
 print("Training is finished")
 # Save the model and the memory items
-torch.save(model, os.path.join(log_dir, 'model_'+str(epoch)+'.pth'))
+if len(args.gpus[0])>1:
+    model_save = model.module
+else:
+    model_save = model
+torch.save(model_save, os.path.join(log_dir, 'model_'+str(epoch)+'.pth'))
 torch.save(m_items, os.path.join(log_dir, 'keys_'+str(epoch)+'.pt'))
 
 
